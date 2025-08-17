@@ -2,28 +2,22 @@
 
 ![](./assets/image.png)
 
-Quickly generated script that will save cunny lake snapshots every 5 minutes.
+Quickly generated script that will save cunny lake snapshots every 15 minutes by default.
 
-This script downloads map tiles from **wplace.live** and stitches them together into a single combined image.  
-It runs the screenshot task automatically every **15 minutes** (Default, adjustable), saving the output with a timestamped filename.
-
-
-App is a quick WIP MVP for this emergency and might have bugs.
-
----
+Highly configurable using `config.cfg`.
 
 ## Requirements
 - Python **3.8+** (tested on Python 3.12)
 
 ## How to use app
 
-Download this repo using the [releases tab](https://github.com/atharray/cunny-lake-archive/releases).
+Download this repo using the [releases tab](https://github.com/atharray/cunny-lake-archive/releases) and clicking on a release zip file.
 
 Unzip the folder and follow system specific instructions below:
 
 ### Windows
 
-Double click start.bat. screenshots should start appearing
+Double click start.bat or run `.\start.bat` in the directory where the bat file is located.
 
 If you have any errors it could be because your python version was installed incorrectly, download latest at https://python.org
 
@@ -60,3 +54,14 @@ source venv/scripts/activate
 pip install -r requirements.txt
 python cunny.py
 ```
+
+
+## Details
+
+This script downloads map tiles from **wplace.live** and stitches them together into a single combined image.  
+It runs the screenshot task automatically every **15 minutes** (Default, adjustable), saving the output with a timestamped filename.
+
+
+App is a quick WIP MVP for this emergency and might have bugs.
+
+Please read cunny.py for more details.
