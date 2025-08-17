@@ -11,7 +11,7 @@ Highly configurable using `config.cfg`.
 
 ## How to use app
 
-Download this repo using the [releases tab](https://github.com/atharray/cunny-lake-archive/releases) and clicking on a release zip file.
+Download this repo using the [releases tab](https://github.com/atharray/cunny-lake-archive/releases) and clicking on a release source code .zip file.
 
 Unzip the folder and follow system specific instructions below:
 
