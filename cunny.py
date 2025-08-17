@@ -6,6 +6,7 @@ from datetime import datetime
 import os
 import configparser
 import glob
+import numpy as np
 
 # Tile URL template
 URL_TEMPLATE = "https://backend.wplace.live/files/s0/tiles/{x}/{y}.png"
@@ -137,15 +138,18 @@ def get_latest_snapshot():
 
 def calculate_image_difference(img1, img2, threshold=0):
     """
-    Calculate the difference between two images and return a difference image.
+    Calculate the difference between two images with custom visualization:
+    - Purple pixels for deletions (pixels that were present in img1 but not in img2)
+    - Green pixels for additions (pixels that were not in img1 but are in img2)
+    - White pixels for modifications (pixels that changed color)
     
     Args:
         img1 (PIL.Image): First image (older)
-        img2 (PIL.Image): Second image (newer)
+        img2 (PIL.Image): Second image (newer)  
         threshold (int): Minimum difference threshold (0-255)
         
     Returns:
-        PIL.Image or None: Difference image, or None if images are identical
+        PIL.Image or None: Custom difference image, or None if images are identical
     """
     try:
         # Ensure both images are the same size and mode
@@ -153,40 +157,79 @@ def calculate_image_difference(img1, img2, threshold=0):
             print("Warning: Images have different sizes, cannot compare")
             return None
             
-        # Convert both to RGB for comparison
-        if img1.mode != 'RGB':
-            img1 = img1.convert('RGB')
-        if img2.mode != 'RGB':
-            img2 = img2.convert('RGB')
+        # Convert both to RGBA for comparison
+        if img1.mode != 'RGBA':
+            img1 = img1.convert('RGBA')
+        if img2.mode != 'RGBA':
+            img2 = img2.convert('RGBA')
             
-        # Calculate difference
-        diff = ImageChops.difference(img1, img2)
+        # Convert to numpy arrays for pixel-level analysis
+        arr1 = np.array(img1)
+        arr2 = np.array(img2)
         
-        # Apply threshold if specified
-        if threshold > 0:
-            # Convert to grayscale for threshold calculation
-            diff_gray = diff.convert('L')
-            # Create a mask where differences exceed threshold
-            threshold_mask = diff_gray.point(lambda x: 255 if x > threshold else 0, '1')
-            # Apply mask to original difference
-            diff.putalpha(threshold_mask)
+        # Create output array (RGBA)
+        height, width = arr1.shape[:2]
+        diff_array = np.zeros((height, width, 4), dtype=np.uint8)
         
-        # Check if there are any differences
-        extrema = diff.getextrema()
-        has_differences = False
+        # Track statistics
+        deleted_pixels = 0
+        added_pixels = 0
+        modified_pixels = 0
         
-        if diff.mode == 'RGB':
-            has_differences = any(ext[1] > 0 for ext in extrema)
-        elif diff.mode == 'RGBA':
-            has_differences = any(ext[1] > 0 for ext in extrema[:3])  # Check RGB channels only
-        else:  # Grayscale
-            has_differences = extrema[1] > 0
-            
-        if not has_differences:
+        # Process each pixel
+        for y in range(height):
+            for x in range(width):
+                pixel1 = arr1[y, x]  # [R, G, B, A]
+                pixel2 = arr2[y, x]  # [R, G, B, A]
+                
+                # Check if pixels are transparent (alpha = 0)
+                transparent1 = pixel1[3] == 0
+                transparent2 = pixel2[3] == 0
+                
+                if not transparent1 and transparent2:
+                    # Pixel was deleted (was solid, now transparent)
+                    diff_array[y, x] = [128, 0, 128, 255]  # Purple
+                    deleted_pixels += 1
+                    
+                elif transparent1 and not transparent2:
+                    # Pixel was added (was transparent, now solid)
+                    diff_array[y, x] = [0, 255, 0, 255]  # Green
+                    added_pixels += 1
+                    
+                elif not transparent1 and not transparent2:
+                    # Both pixels are solid, check if they're different
+                    # Calculate color difference (ignoring alpha for color comparison)
+                    color_diff = np.sqrt(np.sum((pixel1[:3].astype(int) - pixel2[:3].astype(int)) ** 2))
+                    
+                    if color_diff > threshold:
+                        # Pixel was modified (color changed)
+                        diff_array[y, x] = [255, 255, 255, 255]  # White
+                        modified_pixels += 1
+                    # If color difference is below threshold, leave as transparent (no change)
+                    
+                # If both are transparent or identical, leave as transparent (no change)
+        
+        # Check if there are any changes
+        total_changes = deleted_pixels + added_pixels + modified_pixels
+        
+        if total_changes == 0:
             print("No differences detected between images")
             return None
             
-        return diff
+        # Print change statistics
+        print(f"Changes detected: {total_changes} pixels")
+        if deleted_pixels > 0:
+            print(f"  Deleted pixels (purple): {deleted_pixels}")
+        if added_pixels > 0:
+            print(f"  Added pixels (green): {added_pixels}")
+        if modified_pixels > 0:
+            print(f"  Modified pixels (white): {modified_pixels}")
+        if threshold > 0:
+            print(f"  Applied difference threshold: {threshold}")
+            
+        # Convert back to PIL Image
+        diff_image = Image.fromarray(diff_array, 'RGBA')
+        return diff_image
         
     except Exception as e:
         print(f"Error calculating image difference: {e}")
@@ -259,7 +302,7 @@ def stitch_tiles(x_min, x_max, y_min, y_max, save_scaled=False, scale_percent=50
                 print(f"Comparing with previous snapshot: {latest_snapshot}")
                 previous_image = Image.open(latest_snapshot)
                 
-                # Calculate difference
+                # Calculate difference with custom visualization
                 diff_image = calculate_image_difference(previous_image, stitched, delta_threshold)
                 
                 if diff_image:
@@ -334,6 +377,10 @@ scale_algorithm = nearest
 
 # Save delta/difference images comparing consecutive snapshots (true/false)
 # Note: This is automatically disabled when save_scaled is true
+# Delta images now use custom colors:
+# - Purple: Deleted pixels (were present, now gone)
+# - Green: Added pixels (were absent, now present)  
+# - White: Modified pixels (changed color)
 save_deltas = false
 
 # Minimum difference threshold for delta images (0-255)
@@ -385,6 +432,7 @@ if __name__ == "__main__":
     if save_deltas:
         print(f"Delta threshold: {delta_threshold}")
         print("Delta directory: ./delta/")
+        print("Delta colors: Purple=Deleted, Green=Added, White=Modified")
     print("========================\n")
 
     while True:
