@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snapshot Timeline Viewer</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #ffffff;
+            color: #333;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .viewer-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .image-container {
+            background: #f8f9fa;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            text-align: center;
+            min-height: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: auto;
+            position: relative;
+        }
+        
+        .snapshot-image {
+            max-width: none;
+            max-height: none;
+            border-radius: 4px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            cursor: grab;
+            transition: transform 0.1s ease;
+        }
+        
+        .snapshot-image:active {
+            cursor: grabbing;
+        }
+        
+        .image-wrapper {
+            overflow: auto;
+            max-width: 100%;
+            max-height: 70vh;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+        }
+        
+        .controls {
+            background: #f8f9fa;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        
+        .nav-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .btn-nav {
+            background: #6c757d;
+            border: none;
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .btn-nav:hover:not(:disabled) {
+            background: #5a6268;
+        }
+        
+        .btn-nav:disabled {
+            background: #e9ecef;
+            color: #6c757d;
+            cursor: not-allowed;
+        }
+        
+        .filename-display {
+            font-family: 'Courier New', monospace;
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            text-align: center;
+            flex-grow: 1;
+        }
+        
+        .file-input-section {
+            background: #f8f9fa;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .file-input {
+            display: none;
+        }
+        
+        .file-input-label {
+            background: #4a90e2;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: inline-block;
+            transition: background-color 0.2s;
+        }
+        
+        .file-input-label:hover {
+            background: #357abd;
+        }
+        
+        .loading {
+            color: #6c757d;
+            font-style: italic;
+        }
+        
+        .error {
+            color: #dc3545;
+            text-align: center;
+            padding: 40px;
+        }
+        
+        .info {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #6c757d;
+        }
+        
+        .file-counter {
+            color: #6c757d;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+        
+        .zoom-controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            display: flex;
+            gap: 5px;
+            opacity: 0.8;
+        }
+        
+        .zoom-btn {
+            background: #6c757d;
+            color: white;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.2s;
+        }
+        
+        .zoom-btn:hover {
+            background: #5a6268;
+            opacity: 1;
+        }
+        
+        @media (max-width: 768px) {
+            .controls {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .nav-buttons {
+                order: 2;
+            }
+            
+            .filename-display {
+                order: 1;
+                margin-bottom: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="viewer-container">
+        <h1 class="text-center mb-4">Snapshot Timeline Viewer</h1>
+        <div class="info">
+            <small>Browse and select your snapshot image directory to view PNG files in timeline order</small>
+        </div>
+        
+        <div class="file-input-section">
+            <label for="fileInput" class="file-input-label">
+                📂 Browse Snapshot Image Directory
+            </label>
+            <input type="file" id="fileInput" class="file-input" multiple accept=".png" webkitdirectory>
+            <div class="file-counter" id="fileCounter">No files selected</div>
+        </div>
+        
+        <div class="image-container">
+            <div class="zoom-controls" id="zoomControls" style="display: none;">
+                <button class="zoom-btn" onclick="zoomIn()">+</button>
+                <button class="zoom-btn" onclick="zoomOut()">−</button>
+                <button class="zoom-btn" onclick="resetZoom()" title="Reset Zoom">⌂</button>
+            </div>
+            <div id="imageContent">
+                <div class="loading">Browse and select your snapshot directory to begin viewing</div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <div class="nav-buttons">
+                <button class="btn-nav" id="prevBtn" onclick="previousImage()" disabled>
+                    ◀ Previous
+                </button>
+                <button class="btn-nav" id="nextBtn" onclick="nextImage()" disabled>
+                    Next ▶
+                </button>
+            </div>
+            
+            <div class="filename-display" id="filename">
+                No files loaded
+            </div>
+            
+            <div class="nav-buttons">
+                <button class="btn-nav" id="firstBtn" onclick="goToFirst()" disabled>
+                    ⏮ First
+                </button>
+                <button class="btn-nav" id="lastBtn" onclick="goToLast()" disabled>
+                    Last ⏭
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let snapshots = [];
+        let currentIndex = 0;
+        let currentZoom = 1;
+        let isDragging = false;
+        let lastX = 0;
+        let lastY = 0;
+        
+        // Handle file selection
+        document.getElementById('fileInput').addEventListener('change', function(event) {
+            const files = Array.from(event.target.files);
+            
+            // Filter for PNG files only
+            const pngFiles = files.filter(file => 
+                file.type === 'image/png' || file.name.toLowerCase().endsWith('.png')
+            );
+            
+            if (pngFiles.length === 0) {
+                document.getElementById('fileCounter').textContent = 'No PNG files found';
+                document.getElementById('imageContent').innerHTML = '<div class="error">No PNG files selected</div>';
+                return;
+            }
+            
+            // Sort files by name (which should be chronological for your timestamp format)
+            pngFiles.sort((a, b) => a.name.localeCompare(b.name));
+            
+            snapshots = pngFiles;
+            currentIndex = snapshots.length - 1; // Start with most recent
+            
+            document.getElementById('fileCounter').textContent = 
+                `${pngFiles.length} PNG file${pngFiles.length === 1 ? '' : 's'} loaded`;
+            
+            displayCurrentImage();
+            updateControls();
+        });
+        
+        // Display the current image
+        function displayCurrentImage() {
+            const imageContent = document.getElementById('imageContent');
+            const filename = document.getElementById('filename');
+            const zoomControls = document.getElementById('zoomControls');
+            
+            if (snapshots.length === 0) {
+                return;
+            }
+            
+            const currentFile = snapshots[currentIndex];
+            filename.textContent = currentFile.name;
+            
+            // Create image wrapper and element
+            const imageWrapper = document.createElement('div');
+            imageWrapper.className = 'image-wrapper';
+            
+            const img = document.createElement('img');
+            img.className = 'snapshot-image';
+            
+            img.onload = function() {
+                imageContent.innerHTML = '';
+                imageWrapper.appendChild(img);
+                imageContent.appendChild(imageWrapper);
+                zoomControls.style.display = 'flex';
+                resetZoom();
+                setupImageInteractions(img, imageWrapper);
+            };
+            
+            img.onerror = function() {
+                imageContent.innerHTML = '<div class="error">Failed to load image: ' + currentFile.name + '</div>';
+                zoomControls.style.display = 'none';
+            };
+            
+            // Use FileReader to convert file to data URL
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                img.src = e.target.result;
+            };
+            
+            imageContent.innerHTML = '<div class="loading">Loading image...</div>';
+            zoomControls.style.display = 'none';
+            reader.readAsDataURL(currentFile);
+        }
+        
+        // Setup image interactions (zoom and pan)
+        function setupImageInteractions(img, wrapper) {
+            // Mouse wheel zoom
+            wrapper.addEventListener('wheel', function(e) {
+                e.preventDefault();
+                const rect = wrapper.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                if (e.deltaY < 0) {
+                    zoomAt(x, y, 1.1);
+                } else {
+                    zoomAt(x, y, 0.9);
+                }
+            });
+            
+            // Mouse drag to pan
+            img.addEventListener('mousedown', function(e) {
+                e.preventDefault();
+                isDragging = true;
+                lastX = e.clientX;
+                lastY = e.clientY;
+                img.style.cursor = 'grabbing';
+            });
+            
+            document.addEventListener('mousemove', function(e) {
+                if (!isDragging) return;
+                
+                const deltaX = e.clientX - lastX;
+                const deltaY = e.clientY - lastY;
+                
+                wrapper.scrollLeft -= deltaX;
+                wrapper.scrollTop -= deltaY;
+                
+                lastX = e.clientX;
+                lastY = e.clientY;
+            });
+            
+            document.addEventListener('mouseup', function() {
+                isDragging = false;
+                if (img) img.style.cursor = 'grab';
+            });
+        }
+        
+        // Zoom functions
+        function zoomIn() {
+            currentZoom *= 1.2;
+            applyZoom();
+        }
+        
+        function zoomOut() {
+            currentZoom /= 1.2;
+            if (currentZoom < 0.1) currentZoom = 0.1;
+            applyZoom();
+        }
+        
+        function resetZoom() {
+            currentZoom = 1;
+            applyZoom();
+        }
+        
+        function zoomAt(x, y, factor) {
+            const wrapper = document.querySelector('.image-wrapper');
+            const img = document.querySelector('.snapshot-image');
+            if (!wrapper || !img) return;
+            
+            const oldZoom = currentZoom;
+            currentZoom *= factor;
+            if (currentZoom < 0.1) currentZoom = 0.1;
+            if (currentZoom > 10) currentZoom = 10;
+            
+            const zoomChange = currentZoom / oldZoom;
+            
+            // Calculate new scroll position to zoom at mouse position
+            const newScrollLeft = (wrapper.scrollLeft + x) * zoomChange - x;
+            const newScrollTop = (wrapper.scrollTop + y) * zoomChange - y;
+            
+            applyZoom();
+            
+            wrapper.scrollLeft = newScrollLeft;
+            wrapper.scrollTop = newScrollTop;
+        }
+        
+        function applyZoom() {
+            const img = document.querySelector('.snapshot-image');
+            if (img) {
+                img.style.transform = `scale(${currentZoom})`;
+                img.style.transformOrigin = '0 0';
+            }
+        }
+        function updateControls() {
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+            const firstBtn = document.getElementById('firstBtn');
+            const lastBtn = document.getElementById('lastBtn');
+            
+            const hasFiles = snapshots.length > 0;
+            
+            prevBtn.disabled = !hasFiles || (currentIndex <= 0);
+            nextBtn.disabled = !hasFiles || (currentIndex >= snapshots.length - 1);
+            firstBtn.disabled = !hasFiles || (currentIndex <= 0);
+            lastBtn.disabled = !hasFiles || (currentIndex >= snapshots.length - 1);
+            
+            // Update filename display with position info
+            if (hasFiles) {
+                const filename = document.getElementById('filename');
+                const currentFile = snapshots[currentIndex];
+                filename.innerHTML = `
+                    <div>${currentFile.name}</div>
+                    <small style="color: #888; font-size: 14px;">
+                        ${currentIndex + 1} of ${snapshots.length}
+                    </small>
+                `;
+            }
+        }
+        
+        // Navigate to previous image
+        function previousImage() {
+            if (currentIndex > 0) {
+                currentIndex--;
+                currentZoom = 1;
+                displayCurrentImage();
+                updateControls();
+            }
+        }
+        
+        // Navigate to next image
+        function nextImage() {
+            if (currentIndex < snapshots.length - 1) {
+                currentIndex++;
+                currentZoom = 1;
+                displayCurrentImage();
+                updateControls();
+            }
+        }
+        
+        // Go to first image
+        function goToFirst() {
+            if (snapshots.length > 0) {
+                currentIndex = 0;
+                currentZoom = 1;
+                displayCurrentImage();
+                updateControls();
+            }
+        }
+        
+        // Go to last image
+        function goToLast() {
+            if (snapshots.length > 0) {
+                currentIndex = snapshots.length - 1;
+                currentZoom = 1;
+                displayCurrentImage();
+                updateControls();
+            }
+        }
+        
+        // Keyboard navigation
+        document.addEventListener('keydown', function(event) {
+            if (snapshots.length === 0) return;
+            
+            switch(event.key) {
+                case 'ArrowLeft':
+                    event.preventDefault();
+                    previousImage();
+                    break;
+                case 'ArrowRight':
+                    event.preventDefault();
+                    nextImage();
+                    break;
+                case 'Home':
+                    event.preventDefault();
+                    goToFirst();
+                    break;
+                case 'End':
+                    event.preventDefault();
+                    goToLast();
+                    break;
+                case '=':
+                case '+':
+                    event.preventDefault();
+                    zoomIn();
+                    break;
+                case '-':
+                    event.preventDefault();
+                    zoomOut();
+                    break;
+                case '0':
+                    event.preventDefault();
+                    resetZoom();
+                    break;
+            }
+        });
+    </script>
+</body>
+</html>

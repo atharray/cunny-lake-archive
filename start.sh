@@ -1,71 +1,37 @@
 #!/bin/bash
+# This script sets up a Python virtual environment, installs dependencies,
+# and runs the main application for Linux/macOS.
 
-echo "====================================="
-echo "  Tile Stitcher - Unix Launcher"
-echo "====================================="
+echo "Running Python setup script..."
 
-read -p "This will create a virtual environment (venv). Continue? (y/n) " CONTINUE
-if [[ "$CONTINUE" != "y" && "$CONTINUE" != "Y" ]]; then
-    echo "Exiting..."
-    exit 0
-fi
-
+# Check if the 'venv' directory exists. If not, create the virtual environment.
 if [ ! -d "venv" ]; then
     echo "Creating virtual environment..."
     python3 -m venv venv
-    if [ $? -ne 0 ]; then
-        echo "Failed to create virtual environment. Make sure Python3 is installed."
-        read -p "Press Enter to exit..."
-        exit 1
-    fi
 fi
 
+# Activate the virtual environment
 echo "Activating virtual environment..."
+# The 'source' command is used to run the activation script in the current shell.
+# This is required for the virtual environment to be active for subsequent commands.
 source venv/bin/activate
-if [ $? -ne 0 ]; then
-    echo "Failed to activate virtual environment."
-    read -p "Press Enter to exit..."
+
+# Check if the activation was successful
+if [ -z "$VIRTUAL_ENV" ]; then
+    echo ""
+    echo "ERROR: Failed to activate the virtual environment."
+    echo "Please ensure Python 3 is installed and in your system's PATH."
     exit 1
 fi
 
-python -m pip show requests > /dev/null 2>&1
-if [ $? -ne 0 ]; then
-    read -p "Requests missing. Install requirements.txt now? (y/n) " INSTALL
-    if [[ "$INSTALL" == "y" || "$INSTALL" == "Y" ]]; then
-        pip install -r requirements.txt
-        if [ $? -ne 0 ]; then
-            echo "Failed to install requirements."
-            read -p "Press Enter to exit..."
-            exit 1
-        fi
-    else
-        echo "Cannot continue without requests. Exiting..."
-        read -p "Press Enter to exit..."
-        exit 1
-    fi
-fi
+# Install dependencies from requirements.txt
+echo "Installing dependencies..."
+pip install -r requirements.txt
 
-python -m pip show Pillow > /dev/null 2>&1
-if [ $? -ne 0 ]; then
-    read -p "Pillow missing. Install requirements.txt now? (y/n) " INSTALL2
-    if [[ "$INSTALL2" == "y" || "$INSTALL2" == "Y" ]]; then
-        pip install -r requirements.txt
-        if [ $? -ne 0 ]; then
-            echo "Failed to install requirements."
-            read -p "Press Enter to exit..."
-            exit 1
-        fi
-    else
-        echo "Cannot continue without Pillow. Exiting..."
-        read -p "Press Enter to exit..."
-        exit 1
-    fi
-fi
+# Run the main Python application
+echo "Running the application..."
+python cunny.py
 
-echo "Starting Tile Stitcher..."
-python stitch_tiles.py
-if [ $? -ne 0 ]; then
-    echo "Script execution failed."
-fi
-
-read -p "Press Enter to exit..."
+# The script will now exit
+echo "Script finished."
+exit 0
