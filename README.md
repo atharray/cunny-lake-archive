@@ -1,6 +1,6 @@
 # Cunny Lake Archive Tile Stitcher
 
-![alt text](./assets/stitched_20250817_024239_scaled_50p_nearest.png)
+![](./assets/image.png)
 
 Quickly generated script that will save cunny lake snapshots every 5 minutes.
 
