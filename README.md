@@ -7,24 +7,26 @@ It runs the screenshot task automatically every **15 minutes** (Default, adjusta
 
 ---
 
-## Features
-- TBD
-
----
-
 ## Requirements
 - Python **3.8+** (tested on Python 3.12)
-- [Pillow](https://pillow.readthedocs.io/) (for image manipulation)
-- [Requests](https://docs.python-requests.org/) (for HTTP requests)
-
-Install dependencies with:
-
-```bash
-pip install -r requirements.txt
-
-etc. etc.
-```
 
 ## Usage
 
-TBD
+### Windows
+
+Use start.bat
+
+Double click to run.
+
+Or call start.bat in Command Prompt.
+
+### MacOS/Linux
+
+Use start.sh
+
+Run the following in a terminal window:
+
+```sh
+cchmod +x start.sh
+./start.sh
+```
