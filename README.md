@@ -1,6 +1,6 @@
 # Cunny Lake Archive Tile Stitcher
 
-![alt text](./assets/image_downscaled.png)
+![alt text](./assets/image_readme.png)
 
 Quickly generated script that will save cunny lake snapshots every 15 minutes by default.
 
